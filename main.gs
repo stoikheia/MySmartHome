@@ -1,23 +1,48 @@
-var SECRET_DEVELOPER_TOKEN = PropertiesService.getScriptProperties().getProperty("SECRET_DEVELOPER_TOKEN");
+const SECRET_DEVELOPER_TOKEN = PropertiesService.getScriptProperties().getProperty("SECRET_DEVELOPER_TOKEN");
 
-var HOST = "https://api.switch-bot.com";
-var DEVICE_LIST_PATH = "/v1.0/devices";
-var DEVICE_CONTROL_PATH = "/v1.0/devices/{deviceId}/commands"
+const HOST = "https://api.switch-bot.com";
+const DEVICE_LIST_PATH = "/v1.0/devices";
+const DEVICE_STATUS_PATH = "/v1.0/devices/{deviceId}/status";
+const DEVICE_CONTROL_PATH = "/v1.0/devices/{deviceId}/commands"
 
-var DESK_LIGHT1_ID = PropertiesService.getScriptProperties().getProperty("DESK_LIGHT1_ID");
-var OWL_PLUG_ID = PropertiesService.getScriptProperties().getProperty("OWL_PLUG_ID");
+const DESK_LIGHT1_ID = PropertiesService.getScriptProperties().getProperty("DESK_LIGHT1_ID");
+const OWL_PLUG_ID = PropertiesService.getScriptProperties().getProperty("OWL_PLUG_ID");
 
-var DEVICE_TABLE = {
+const DEVICE_TABLE = {
   desk_light1 : DESK_LIGHT1_ID,
   owl_plug : OWL_PLUG_ID,
+};
+
+const DEVICE_META = {
+  desk_light1 : {
+    deviceType: 'Bulb',
+  },
+  owl_plug : {
+    deviceType: 'Plug',
+  }
 };
 
 function createDeviceControlPath(deviceId) {
   return DEVICE_CONTROL_PATH.replace('{deviceId}', deviceId);
 }
 
+function createDeviceStatusPath(deviceId) {
+  return DEVICE_STATUS_PATH.replace('{deviceId}', deviceId);
+}
+
+
 function switchbotListGET() {  
   return UrlFetchApp.fetch(HOST + DEVICE_LIST_PATH, {
+    'method': 'GET',
+    'headers' : {
+      'authorization': SECRET_DEVELOPER_TOKEN,
+    },
+    'muteHttpExceptions': true,
+  });
+}
+
+function switchbotStatusGET(deviceId) {
+  return UrlFetchApp.fetch(HOST + createDeviceStatusPath(deviceId), {
     'method': 'GET',
     'headers' : {
       'authorization': SECRET_DEVELOPER_TOKEN,
@@ -36,10 +61,10 @@ function createOutputObject(message) {
 }
 
 function outputDeviceCount() {
-  var response = switchbotListGET();
+  const response = switchbotListGET();
   if (200 == response.getResponseCode()) {
-    var json = JSON.parse(response.getContentText());
-    var deviceList = json.body.deviceList;
+    const json = JSON.parse(response.getContentText());
+    const deviceList = json.body.deviceList;
     return createOutputObject('DeviceCount : ' + deviceList.length);
   } else {
     return createOutputObject(createErrorMessageWhenFetchSwitchbotAPI(response));
@@ -47,10 +72,10 @@ function outputDeviceCount() {
 }
 
 function outputDeviceInfoByIndex(i) {
-  var response = switchbotListGET();
+  const response = switchbotListGET();
   if (200 == response.getResponseCode()) {
-    var json = JSON.parse(response.getContentText());
-    var deviceList = json.body.deviceList;
+    const json = JSON.parse(response.getContentText());
+    const deviceList = json.body.deviceList;
     if (i < deviceList.length) {
       return createOutputObject('Device' + i + ' : ' + JSON.stringify(deviceList[i], null, 2));
     } else {
@@ -62,7 +87,7 @@ function outputDeviceInfoByIndex(i) {
 }
 
 function outputBareDeviceInfo() {
-  var response = switchbotListGET();
+  const response = switchbotListGET();
   if (200 == response.getResponseCode()) {
     return createOutputObject('BareDeviceInfo : ' + response.getContentText());
   } else {
@@ -74,7 +99,7 @@ function doGet(e) {
   if (Object.keys(e.parameter).length === 0) {
     return outputDeviceCount();
   }
-  var param = e.parameter;
+  const param = e.parameter;
   if (param.index) {
     return outputDeviceInfoByIndex(param.index);
   }
@@ -98,44 +123,186 @@ function switchbotControlPOST(deviceId, json) {
 }
 
 function outputSwitchbotControl(key, params) {
-  if (params.debug) {
-        var response = switchbotControlPOST(DEVICE_TABLE[key], params[key]);
+  if (hookExCommand(key, params[key])) {
+    return createOutputObject('Succeeded : ' + key + ' : (Ex)' + params[key].command);
+  } else {
+    const response = switchbotControlPOST(DEVICE_TABLE[key], params[key]);
     if (200 == response.getResponseCode()) {
-      return ContentService.createTextOutput('Succeeded : ' + key);
+      return createOutputObject('Succeeded : ' + key + ' : ' + params[key].command);
     } else {
-      return ContentService.createTextOutput('Failed : ' + key + ' : ' + response.getResponseCode());
+      throw 'Failed : ' + key + ' : ' + params[key].command + ' : ' + response.getResponseCode();
     }
   }
 }
 
 function doPost(e) {
-  var params = JSON.parse(e.postData.getDataAsString());
-  var keys = Object.keys(params);
+  const params = JSON.parse(e.postData.getDataAsString());
+  const keys = Object.keys(params);
+  let count = 0;
   try {
     keys.forEach(key => {
       if (DEVICE_TABLE[key]) {
-        return outputSwitchbotControl(key, params)
+        count++;
+        const ret = outputSwitchbotControl(key, params);
+        console.log(ret.getContent());
       } else {
         throw 'Error : ' + key + ' not found';
       }
     });
-  } catch (e) {
-    return ContentService.createTextOutput(e);
+  } catch (err) {
+    return createOutputObject(err);
   }
-  var desk_light1 = params.desk_light1;
 
-  if (desk_light1) {
-    var response = switchbotControlPOST(DESK_LIGHT1_ID, desk_light1);
-    if (200 == response.getResponseCode()) {
-      return ContentService.createTextOutput('Succeeded : desk_light1');
-    } else {
-      return ContentService.createTextOutput('Failed : ' + response.getResponseCode());
-    }
-    Logger.log(JSON.stringify(desk_light1));
-    return ContentService.createTextOutput(JSON.stringify(desk_light1));
+  if (count == 0) {
+    return createOutputObject("no registered device");
   } else {
-    return ContentService.createTextOutput("no function");
+    return createOutputObject("Succeeded");
   }
-  return ContentService.createTextOutput("succeeded");
 }
+
+/*
+--------------------------------------------------------------------------------------------
+  Definition of Extended Command
+
+  1. Plug.toggle // Added 'toggle' command for Plug.
+ */
+
+function hookExCommand(deviceKey, param) {
+  const deviceTypeMeta = DEVICE_META[deviceKey].deviceType;
+  if (deviceTypeMeta === 'Plug') {
+    if (param.command === 'toggle') {
+      togglePlug(deviceKey);
+      return true;
+    }
+  }
+  return false;
+}
+
+function togglePlug(deviceKey) {
+  const deviceId = DEVICE_TABLE[deviceKey];
+  
+  const command = {
+    command: '',
+    commandType: 'command',
+    parameter: 'default',
+  };
+
+  const response1 = switchbotStatusGET(deviceId);
+  if (200 == response1.getResponseCode()) {
+    console.log('DEBUG : ' + deviceKey + ' : (Ex)toggle : fetch Status : ' + response1.getContentText());
+    const status = JSON.parse(response1.getContentText());
+    if (status.body.power.toLowerCase() === 'on') {
+      command.command = 'turnOff';
+    } else {
+      command.command = 'turnOn';
+    }
+  } else {
+    throw 'Failed : ' + deviceKey + ' : (Ex)toggle : fetch Status : ' + response1.getResponseCode();
+  }
+
+  const response2 = switchbotControlPOST(deviceId, command);
+  if (200 != response2.getResponseCode()) {
+    throw 'Failed : ' + deviceKey + ' : (Ex)toggle : post command : ' + response.getResponseCode();
+  }
+}
+
+/*
+--------------------------------------------------------------------------------------------
+ */
+
+function testDoGet001_deviceCount() {
+  const e = {
+    parameter:{
+      // no parameter
+    },
+  };
+  const ret = doGet(e);
+
+  console.log('test result : ' + ret.getContent());
+}
+
+function testDoGet002_getDevice1() {
+  const e = {
+    parameter:{
+      index: 1,
+    },
+  };
+  const ret = doGet(e);
+
+  console.log('test result : ' + ret.getContent());
+}
+
+class postData {
+  constructor(data) {
+    this.data = data;
+  }
+  getDataAsString() {
+    return JSON.stringify(this.data, null, 2);
+  }
+}
+
+function testDoPOST001_multipleDevice() {
+  const e = {};
+  e.postData = new postData({
+    desk_light1: {
+      command: 'turnOn',
+      commandType: 'command',
+      parameter: 'default',
+    },
+    owl_plug: {
+      command: 'turnOn',
+      commandType: 'command',
+      parameter: 'default',
+    },
+  });
+  const ret = doPost(e);
+
+  console.log('test result : ' + ret.getContent());
+}
+
+function testDoPOST002_exCommand() {
+  const e = {};
+  e.postData = new postData({
+    desk_light1: {
+      command: 'toggle',
+      commandType: 'command',
+      parameter: 'default',
+    },
+    owl_plug: {
+      command: 'toggle',
+      commandType: 'command',
+      parameter: 'default',
+    },
+  });
+  const ret = doPost(e);
+
+  console.log('test result : ' + ret.getContent());
+}
+
+function testDoPOST003_multipleCommand() {
+  const e = {
+    parameter:{
+      desk_light1: [
+        {
+          command: 'toggle',
+          commandType: 'command',
+          parameter: 'default',
+        },
+        {
+          command: 'toggle',
+          commandType: 'command',
+          parameter: 'default',
+        },
+      ],
+    },
+  };
+  const ret = doPost(e);
+
+  console.log('test result : ' + ret.getContent());
+}
+
+
+
+
+
 
