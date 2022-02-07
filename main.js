@@ -279,7 +279,7 @@ function testDoPOST002_exCommand() {
   console.log('test result : ' + ret.getContent());
 }
 
-function testDoPOST003_multipleCommand() {
+function testDoPOST003_multipleCommand() { // TODO: implementation
   const e = {
     parameter:{
       desk_light1: [
