@@ -22,16 +22,16 @@ const DEVICE_META = {
   }
 };
 
-function createDeviceControlPath(deviceId) {
+function createDeviceControlPath_(deviceId) {
   return DEVICE_CONTROL_PATH.replace('{deviceId}', deviceId);
 }
 
-function createDeviceStatusPath(deviceId) {
+function createDeviceStatusPath_(deviceId) {
   return DEVICE_STATUS_PATH.replace('{deviceId}', deviceId);
 }
 
 
-function switchbotListGET() {  
+function switchbotListGET_() {  
   return UrlFetchApp.fetch(HOST + DEVICE_LIST_PATH, {
     'method': 'GET',
     'headers' : {
@@ -41,8 +41,8 @@ function switchbotListGET() {
   });
 }
 
-function switchbotStatusGET(deviceId) {
-  return UrlFetchApp.fetch(HOST + createDeviceStatusPath(deviceId), {
+function switchbotStatusGET_(deviceId) {
+  return UrlFetchApp.fetch(HOST + createDeviceStatusPath_(deviceId), {
     'method': 'GET',
     'headers' : {
       'authorization': SECRET_DEVELOPER_TOKEN,
@@ -51,67 +51,67 @@ function switchbotStatusGET(deviceId) {
   });
 }
 
-function createErrorMessageWhenFetchSwitchbotAPI(response) {
+function createErrorMessageWhenFetchSwitchbotAPI_(response) {
   return 'Fetch SwitchbotAPI Failed : ' + response.getResponseCode() + ' ' + response.getContentText();
 }
 
-function createOutputObject(message) {
+function createOutputObject_(message) {
   console.log('createOutputObject : ' + message);
   return ContentService.createTextOutput(message);
 }
 
-function outputDeviceCount() {
-  const response = switchbotListGET();
+function outputDeviceCount_() {
+  const response = switchbotListGET_();
   if (200 == response.getResponseCode()) {
     const json = JSON.parse(response.getContentText());
     const deviceList = json.body.deviceList;
-    return createOutputObject('DeviceCount : ' + deviceList.length);
+    return createOutputObject_('DeviceCount : ' + deviceList.length);
   } else {
-    return createOutputObject(createErrorMessageWhenFetchSwitchbotAPI(response));
+    return createOutputObject_(createErrorMessageWhenFetchSwitchbotAPI_(response));
   }
 }
 
-function outputDeviceInfoByIndex(i) {
-  const response = switchbotListGET();
+function outputDeviceInfoByIndex_(i) {
+  const response = switchbotListGET_();
   if (200 == response.getResponseCode()) {
     const json = JSON.parse(response.getContentText());
     const deviceList = json.body.deviceList;
     if (i < deviceList.length) {
-      return createOutputObject('Device' + i + ' : ' + JSON.stringify(deviceList[i], null, 2));
+      return createOutputObject_('Device' + i + ' : ' + JSON.stringify(deviceList[i], null, 2));
     } else {
-      return createOutputObject('Invalid Argument : DeviceInfo OutOfIndex ' + i + '<' + deviceList.length);
+      return createOutputObject_('Invalid Argument : DeviceInfo OutOfIndex ' + i + '<' + deviceList.length);
     }
   } else {
-    return createOutputObject(createErrorMessageWhenFetchSwitchbotAPI(response));
+    return createOutputObject_(createErrorMessageWhenFetchSwitchbotAPI_(response));
   }
 }
 
-function outputBareDeviceInfo() {
-  const response = switchbotListGET();
+function outputBareDeviceInfo_() {
+  const response = switchbotListGET_();
   if (200 == response.getResponseCode()) {
-    return createOutputObject('BareDeviceInfo : ' + response.getContentText());
+    return createOutputObject_('BareDeviceInfo : ' + response.getContentText());
   } else {
-    return createOutputObject(createErrorMessageWhenFetchSwitchbotAPI(response));
+    return createOutputObject_(createErrorMessageWhenFetchSwitchbotAPI_(response));
   }
 }
 
 function doGet(e) {
   if (Object.keys(e.parameter).length === 0) {
-    return outputDeviceCount();
+    return outputDeviceCount_();
   }
   const param = e.parameter;
   if (param.index) {
-    return outputDeviceInfoByIndex(param.index);
+    return outputDeviceInfoByIndex_(param.index);
   }
   if (param.bare && Integer.parse(param.bare) !== 0) {
-    return outputBareDeviceInfo();
+    return outputBareDeviceInfo_();
   }
-  return createOutputObject('Invalid Request');
+  return createOutputObject_('Invalid Request');
 }
 
 
-function switchbotControlPOST(deviceId, json) {
-    return UrlFetchApp.fetch(HOST + createDeviceControlPath(deviceId), {
+function switchbotControlPOST_(deviceId, json) {
+    return UrlFetchApp.fetch(HOST + createDeviceControlPath_(deviceId), {
       'method': 'POST',
       'headers' : {
         'authorization': SECRET_DEVELOPER_TOKEN,
@@ -122,13 +122,13 @@ function switchbotControlPOST(deviceId, json) {
     });
 }
 
-function outputSwitchbotControl(key, params) {
-  if (hookExCommand(key, params[key])) {
-    return createOutputObject('Succeeded : ' + key + ' : (Ex)' + params[key].command);
+function outputSwitchbotControl_(key, params) {
+  if (hookExCommand_(key, params[key])) {
+    return createOutputObject_('Succeeded : ' + key + ' : (Ex)' + params[key].command);
   } else {
-    const response = switchbotControlPOST(DEVICE_TABLE[key], params[key]);
+    const response = switchbotControlPOST_(DEVICE_TABLE[key], params[key]);
     if (200 == response.getResponseCode()) {
-      return createOutputObject('Succeeded : ' + key + ' : ' + params[key].command);
+      return createOutputObject_('Succeeded : ' + key + ' : ' + params[key].command);
     } else {
       throw 'Failed : ' + key + ' : ' + params[key].command + ' : ' + response.getResponseCode();
     }
@@ -143,20 +143,20 @@ function doPost(e) {
     keys.forEach(key => {
       if (DEVICE_TABLE[key]) {
         count++;
-        const ret = outputSwitchbotControl(key, params);
+        const ret = outputSwitchbotControl_(key, params);
         console.log(ret.getContent());
       } else {
         throw 'Error : ' + key + ' not found';
       }
     });
   } catch (err) {
-    return createOutputObject(err);
+    return createOutputObject_(err);
   }
 
   if (count == 0) {
-    return createOutputObject("no registered device");
+    return createOutputObject_("no registered device");
   } else {
-    return createOutputObject("Succeeded");
+    return createOutputObject_("Succeeded");
   }
 }
 
@@ -167,18 +167,18 @@ function doPost(e) {
   1. Plug.toggle // Added 'toggle' command for Plug.
  */
 
-function hookExCommand(deviceKey, param) {
+function hookExCommand_(deviceKey, param) {
   const deviceTypeMeta = DEVICE_META[deviceKey].deviceType;
   if (deviceTypeMeta === 'Plug') {
     if (param.command === 'toggle') {
-      togglePlug(deviceKey);
+      togglePlug_(deviceKey);
       return true;
     }
   }
   return false;
 }
 
-function togglePlug(deviceKey) {
+function togglePlug_(deviceKey) {
   const deviceId = DEVICE_TABLE[deviceKey];
   
   const command = {
@@ -187,7 +187,7 @@ function togglePlug(deviceKey) {
     parameter: 'default',
   };
 
-  const response1 = switchbotStatusGET(deviceId);
+  const response1 = switchbotStatusGET_(deviceId);
   if (200 == response1.getResponseCode()) {
     console.log('DEBUG : ' + deviceKey + ' : (Ex)toggle : fetch Status : ' + response1.getContentText());
     const status = JSON.parse(response1.getContentText());
@@ -200,7 +200,7 @@ function togglePlug(deviceKey) {
     throw 'Failed : ' + deviceKey + ' : (Ex)toggle : fetch Status : ' + response1.getResponseCode();
   }
 
-  const response2 = switchbotControlPOST(deviceId, command);
+  const response2 = switchbotControlPOST_(deviceId, command);
   if (200 != response2.getResponseCode()) {
     throw 'Failed : ' + deviceKey + ' : (Ex)toggle : post command : ' + response.getResponseCode();
   }
