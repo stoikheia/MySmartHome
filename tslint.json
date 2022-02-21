@@ -7,6 +7,7 @@
     "tslint-config-prettier"
   ],
   "rules": {
+    "no-console": [ false ],
     "prettier": [
       true, {
         "printWidth": 140,
