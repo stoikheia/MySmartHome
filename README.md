@@ -18,6 +18,7 @@ This project is GAS scripts for My Smart Home.
 - Typescript
   - babel
   - webpack
+  - gas-webpack-plugin
 
 ## initialize
 
