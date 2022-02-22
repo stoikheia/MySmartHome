@@ -1,10 +1,4 @@
 {
     "scriptId":"1bJkO2EcDXgC5FLYJexzKV3QEOgiiJ-8xheILNwdHQRmRz1TiK1uUeKIP",
-    "rootDir":"/home/d3dx/Projects/MySmartHome",
-    "filePushOrder": [
-        "switchbot.ts",
-        "switchbotCommon.ts",
-        "switchbotGET.ts",
-        "main.js"
-    ]
+    "rootDir":"./dist"
 }

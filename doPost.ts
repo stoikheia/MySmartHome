@@ -24,4 +24,25 @@ function outputSwitchbotControl_(deviceKey: string, params: { [key: string]: Dev
   }
 }
 
-export { outputSwitchbotControl_ };
+function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Content.TextOutput {
+  const params = JSON.parse(e.postData.contents) as { [key: string]: DeviceCommand.Base };
+  const deviceKey = Object.keys(params);
+  let count = 0;
+  try {
+    deviceKey.forEach((key) => {
+      count++;
+      const ret = outputSwitchbotControl_(key, params);
+      console.log(ret.getContent());
+    });
+  } catch (err) {
+    return createOutputObject_(err);
+  }
+
+  if (count === 0) {
+    return createOutputObject_('no effected');
+  } else {
+    return createOutputObject_('Succeeded');
+  }
+}
+
+export { doPost };

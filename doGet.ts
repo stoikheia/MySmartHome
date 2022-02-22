@@ -37,4 +37,18 @@ function outputBareDeviceInfo_(): GoogleAppsScript.Content.TextOutput {
   }
 }
 
-export { outputDeviceCount_, outputDeviceInfoByIndex_, outputBareDeviceInfo_ };
+function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.Content.TextOutput {
+  if (Object.keys(e.parameter).length === 0) {
+    return outputDeviceCount_();
+  }
+  const param = e.parameter;
+  if (param.index) {
+    return outputDeviceInfoByIndex_(parseInt(param.index, 10));
+  }
+  if (param.bare && parseInt(param.bare, 10) !== 0) {
+    return outputBareDeviceInfo_();
+  }
+  return createOutputObject_('Invalid Request');
+}
+
+export { doGet };
